@@ -72,9 +72,6 @@ export class Buyer {
     }
 
     protected emitChanges(): void {
-        this.events.emit('buyer:changed', {
-            buyer: this.getData(),
-            errors: this.validate(),
-        });
+        this.events.emit('buyer:changed');
     }
 }

@@ -29,7 +29,7 @@ abstract class Card extends Component<ICard> {
     }
 
     protected formatPrice(value: number | null): string {
-        return value === null ? 'бесценно' : `${value} синапсов`;
+        return value === null ? 'Бесценно' : `${value} синапсов`;
     }
 
     set title(value: string) {
@@ -41,19 +41,21 @@ abstract class Card extends Component<ICard> {
     }
 }
 
-export class CatalogCard extends Card {
+abstract class ProductCard extends Card {
     protected categoryElement: HTMLElement;
     protected imageElement: HTMLImageElement;
+    protected titleValue = '';
 
-    constructor(container: HTMLElement, actions?: ICardActions) {
+    constructor(container: HTMLElement) {
         super(container);
 
         this.categoryElement = ensureElement<HTMLElement>('.card__category', this.container);
         this.imageElement = ensureElement<HTMLImageElement>('.card__image', this.container);
+    }
 
-        if (actions?.onClick) {
-            this.container.addEventListener('click', actions.onClick);
-        }
+    set title(value: string) {
+        this.titleValue = value;
+        this.titleElement.textContent = value;
     }
 
     set category(value: string) {
@@ -67,41 +69,33 @@ export class CatalogCard extends Card {
     }
 
     set image(value: string) {
-        this.setImage(this.imageElement, `${CDN_URL}${value}`, this.titleElement.textContent || '');
+        this.setImage(this.imageElement, `${CDN_URL}${value}`, this.titleValue);
     }
 }
 
-export class PreviewCard extends Card {
-    protected categoryElement: HTMLElement;
-    protected imageElement: HTMLImageElement;
+export class CatalogCard extends ProductCard {
+    constructor(container: HTMLElement, actions?: ICardActions) {
+        super(container);
+
+        if (actions?.onClick) {
+            this.container.addEventListener('click', actions.onClick);
+        }
+    }
+}
+
+export class PreviewCard extends ProductCard {
     protected descriptionElement: HTMLElement;
     protected buttonElement: HTMLButtonElement;
 
     constructor(container: HTMLElement, actions?: ICardActions) {
         super(container);
 
-        this.categoryElement = ensureElement<HTMLElement>('.card__category', this.container);
-        this.imageElement = ensureElement<HTMLImageElement>('.card__image', this.container);
         this.descriptionElement = ensureElement<HTMLElement>('.card__text', this.container);
         this.buttonElement = ensureElement<HTMLButtonElement>('.card__button', this.container);
 
         if (actions?.onClick) {
             this.buttonElement.addEventListener('click', actions.onClick);
         }
-    }
-
-    set category(value: string) {
-        this.categoryElement.textContent = value;
-
-        Object.values(categoryMap).forEach((className) => {
-            this.categoryElement.classList.remove(className);
-        });
-
-        this.categoryElement.classList.add(categoryMap[value as keyof typeof categoryMap]);
-    }
-
-    set image(value: string) {
-        this.setImage(this.imageElement, `${CDN_URL}${value}`, this.titleElement.textContent || '');
     }
 
     set description(value: string) {

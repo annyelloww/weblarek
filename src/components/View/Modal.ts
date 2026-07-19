@@ -5,11 +5,15 @@ interface IModal {
     content: HTMLElement;
 }
 
+interface IModalActions {
+    onClose: () => void;
+}
+
 export class Modal extends Component<IModal> {
     protected closeButton: HTMLButtonElement;
     protected contentElement: HTMLElement;
 
-    constructor(container: HTMLElement) {
+    constructor(container: HTMLElement, protected actions?: IModalActions) {
         super(container);
 
         this.closeButton = ensureElement<HTMLButtonElement>('.modal__close', this.container);
@@ -37,6 +41,10 @@ export class Modal extends Component<IModal> {
     close() {
         this.container.classList.remove('modal_active');
         this.contentElement.replaceChildren();
+
+        if (this.actions?.onClose) {
+            this.actions.onClose();
+        }
     }
 
     render(data: IModal): HTMLElement {
