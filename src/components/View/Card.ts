@@ -44,18 +44,12 @@ abstract class Card extends Component<ICard> {
 abstract class ProductCard extends Card {
     protected categoryElement: HTMLElement;
     protected imageElement: HTMLImageElement;
-    protected titleValue = '';
 
     constructor(container: HTMLElement) {
         super(container);
 
         this.categoryElement = ensureElement<HTMLElement>('.card__category', this.container);
         this.imageElement = ensureElement<HTMLImageElement>('.card__image', this.container);
-    }
-
-    set title(value: string) {
-        this.titleValue = value;
-        this.titleElement.textContent = value;
     }
 
     set category(value: string) {
@@ -69,7 +63,7 @@ abstract class ProductCard extends Card {
     }
 
     set image(value: string) {
-        this.setImage(this.imageElement, `${CDN_URL}${value}`, this.titleValue);
+        this.setImage(this.imageElement, `${CDN_URL}${value}`);
     }
 }
 

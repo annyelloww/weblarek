@@ -28,20 +28,9 @@ const productsModel = new Products(events);
 const basketModel = new Basket(events);
 const buyerModel = new Buyer(events);
 
-let orderStep: 'order' | 'contacts' | null = null;
-let modalContent: 'preview' | 'basket' | 'order' | 'contacts' | 'success' | null = null;
-
 const header = new Header(ensureElement<HTMLElement>('.header'), events);
 const catalog = new Catalog(ensureElement<HTMLElement>('.gallery'));
-const modal = new Modal(
-    ensureElement<HTMLElement>('#modal-container'),
-    {
-        onClose: () => {
-            orderStep = null;
-            modalContent = null;
-        },
-    }
-);
+const modal = new Modal(ensureElement<HTMLElement>('#modal-container'));
 
 const basketView = new BasketView(
     cloneTemplate<HTMLElement>('#basket'),
@@ -99,6 +88,30 @@ const successView = new Success(
         },
     }
 );
+
+const basketElement = basketView.render({
+    items: [],
+    total: 0,
+    buttonDisabled: true,
+});
+
+const orderFormElement = orderForm.render({
+    payment: buyerModel.getData().payment,
+    address: buyerModel.getData().address,
+    valid: false,
+    errors: [],
+});
+
+const contactsFormElement = contactsForm.render({
+    email: buyerModel.getData().email,
+    phone: buyerModel.getData().phone,
+    valid: false,
+    errors: [],
+});
+
+const successElement = successView.render({
+    total: 0,
+});
 
 const api = new Api(API_URL);
 const webLarekApi = new WebLarekApi(api);
@@ -165,7 +178,7 @@ const renderPreviewCard = () => {
     const product = productsModel.getSelectedProduct();
 
     if (!product) {
-        return document.createElement('div');
+        return null;
     }
 
     const isInBasket = basketModel.hasItem(product.id);
@@ -213,42 +226,27 @@ events.on('products:changed', () => {
 
 events.on('basket:changed', () => {
     renderHeader();
-    renderCatalog();
-
-    if (modalContent === 'basket') {
-        modal.render({
-            content: renderBasket(),
-        });
-    }
-
-    if (modalContent === 'preview') {
-        modal.render({
-            content: renderPreviewCard(),
-        });
-    }
+    renderBasket();
+    renderPreviewCard();
 });
 
 events.on('buyer:changed', () => {
-    if (orderStep === 'order') {
-        renderOrderForm();
-    }
-
-    if (orderStep === 'contacts') {
-        renderContactsForm();
-    }
+    renderOrderForm();
+    renderContactsForm();
 });
 
 events.on<{ product: IProduct }>('card:select', (data) => {
-    orderStep = null;
     productsModel.setSelectedProduct(data.product);
 });
 
 events.on('product:selected', () => {
-    modalContent = 'preview';
+    const preview = renderPreviewCard();
 
-    modal.render({
-        content: renderPreviewCard(),
-    });
+    if (preview) {
+        modal.render({
+            content: preview,
+        });
+    }
 });
 
 events.on('product:buy', () => {
@@ -263,14 +261,13 @@ events.on('product:buy', () => {
     } else {
         basketModel.addItem(product);
     }
+
+    modal.close();
 });
 
 events.on('basket:open', () => {
-    orderStep = null;
-    modalContent = 'basket';
-
     modal.render({
-        content: renderBasket(),
+        content: basketElement,
     });
 });
 
@@ -279,11 +276,8 @@ events.on<{ product: IProduct }>('basket:item-delete', (data) => {
 });
 
 events.on('order:open', () => {
-    orderStep = 'order';
-    modalContent = 'order';
-
     modal.render({
-        content: renderOrderForm(),
+        content: orderFormElement,
     });
 });
 
@@ -292,11 +286,8 @@ events.on<Partial<IBuyer>>('order:change', (data) => {
 });
 
 events.on('order:submit', () => {
-    orderStep = 'contacts';
-    modalContent = 'contacts';
-
     modal.render({
-        content: renderContactsForm(),
+        content: contactsFormElement,
     });
 });
 
@@ -307,12 +298,8 @@ events.on<Partial<IBuyer>>('contacts:change', (data) => {
 events.on('contacts:submit', () => {
     const buyer = buyerModel.getData();
 
-    if (!buyer.payment) {
-        return;
-    }
-
     const order: IOrderRequest = {
-        payment: buyer.payment,
+        payment: buyer.payment as IOrderRequest['payment'],
         email: buyer.email,
         phone: buyer.phone,
         address: buyer.address,
@@ -322,18 +309,20 @@ events.on('contacts:submit', () => {
 
     webLarekApi.orderProducts(order)
         .then((result) => {
-            orderStep = null;
-            modalContent = 'success';
-
             basketModel.clear();
             buyerModel.clear();
 
+            successView.render({
+                total: result.total,
+            });
+
             modal.render({
-                content: successView.render({
-                    total: result.total,
-                }),
+                content: successElement,
             });
         })
+        .catch((error) => {
+            console.error('ошибка при оформлении заказа:', error);
+        });
 });
 
 events.on('success:close', () => {
@@ -341,6 +330,9 @@ events.on('success:close', () => {
 });
 
 renderHeader();
+renderBasket();
+renderOrderForm();
+renderContactsForm();
 
 webLarekApi.getProducts()
     .then((data) => {
